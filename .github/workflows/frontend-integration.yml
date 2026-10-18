@@ -1,19 +1,18 @@
 name: Frontend integration checks
 on:
   push:
-    branches:
-      - feat/frontend-backend-integration
-      - feat/risk-intelligence
-      - test/risk-intelligence-browser-smoke
+    branches: [mai, main, 'fix/**', 'feat/**', 'test/**']
   pull_request:
-    paths:
-      - 'frontend/**'
-      - 'backend/**'
-      - 'tests/**'
-      - '.github/workflows/frontend-integration.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: monitoring-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,8 +28,17 @@ jobs:
         working-directory: frontend
       - run: node tests/risk-browser-smoke.mjs
         working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: /api/v1
+      - run: node tests/risk-browser-smoke.mjs
+        working-directory: frontend
+        env:
+          SENTINEL_TEST_LIVE_BUILD: '1'
   python-syntax:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -40,6 +48,7 @@ jobs:
 
   backend-postgres:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:17
@@ -59,7 +68,31 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r requirements-backend.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install -r requirements-backend.lock
       - run: python scripts/acquire_reports.py
       - run: python scripts/rebuild_dataset.py > /tmp/sentinel-dataset.log
-      - run: python -m unittest tests.test_risk_intelligence tests.test_backend -v
+      - run: python scripts/check_backend.py
+      - name: Verify migrations match models
+        run: |
+          python -m alembic upgrade head
+          python -m alembic check
+        env:
+          DATABASE_URL: ${{ env.BACKEND_TEST_DATABASE_URL }}
+      - name: Exercise the real frontend client against PostgreSQL
+        run: |
+          python -m backend.bootstrap > /tmp/sentinel-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8000/readyz; then break; fi
+            if ! kill -0 "$api_pid" 2>/dev/null; then cat /tmp/sentinel-api.log; exit 1; fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:8000/readyz
+          node frontend/tests/live-api.mjs
+        env:
+          DATABASE_URL: ${{ env.BACKEND_TEST_DATABASE_URL }}
+          SENTINEL_TEST_API_BASE: http://127.0.0.1:8000/api/v1

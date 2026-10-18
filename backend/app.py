@@ -2,11 +2,13 @@ from pathlib import Path
 import os
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from typing import Annotated
 from fastapi import FastAPI, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException
 from .db import engine_from_env
@@ -35,7 +37,7 @@ def create_app(engine=None):
     @app.middleware("http")
     async def headers(request, call_next):
         response = await call_next(request)
-        if request.url.path == "/api" or request.url.path.startswith("/api/"):
+        if request.url.path in {"/api", "/readyz", "/healthz"} or request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "same-origin"
@@ -44,10 +46,29 @@ def create_app(engine=None):
     # Public read-only API: any site may call it; no credentials are involved.
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False,
                        allow_methods=["GET"], allow_headers=["Content-Type"])
+    app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=5)
 
     @app.get("/healthz", include_in_schema=False)
     def health():
         return {"status": "ok"}
+
+    @app.get("/readyz", include_in_schema=False)
+    def readiness():
+        # Liveness alone must not route traffic to an empty or unavailable DB.
+        try:
+            with Session(app.state.engine) as session:
+                active = session.get(ActiveDataset, 1)
+                rev = session.get(Revision, active.version) if active and active.version else None
+                if rev is None or not rev.reports:
+                    return error(503, "DATASET_NOT_VALIDATED", "No validated active dataset is available.")
+                observed = set(session.scalars(select(Snapshot.report_month).where(
+                    Snapshot.version == rev.version).distinct()))
+                if observed != set(rev.reports):
+                    return error(503, "DATASET_NOT_VALIDATED", "Active dataset report coverage is incomplete.")
+                return {"status": "ready", "dataset_version": rev.version}
+        except SQLAlchemyError:
+            # Database errors can contain credentials/SQL; never expose them.
+            return error(503, "DATABASE_UNAVAILABLE", "Database is temporarily unavailable.")
 
     @app.exception_handler(APIError)
     async def api_error(request,exc):

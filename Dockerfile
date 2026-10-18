@@ -8,8 +8,8 @@ RUN npm run build
 
 FROM python:3.12-slim
 WORKDIR /app
-COPY requirements-backend.txt requirements-extraction.txt ./
-RUN pip install --no-cache-dir -r requirements-backend.txt
+COPY requirements-backend.txt requirements-extraction.txt requirements-backend.lock ./
+RUN pip install --no-cache-dir -r requirements-backend.lock
 COPY backend/ backend/
 COPY scripts/ scripts/
 COPY config/ config/

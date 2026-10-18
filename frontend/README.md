@@ -21,12 +21,12 @@ in `public/reference-data.json`.
 To use the deployed public API instead of a local backend, point the dev proxy at it:
 
 ```powershell
-$env:SENTINEL_API_PROXY_TARGET = 'https://sentinel-api-waat.onrender.com'
+$env:SENTINEL_API_PROXY_TARGET = 'https://your-sentinel-host.example'
 npm run dev
 ```
 
 The API is public and allows cross-origin requests, so the Data connection
-dialog can also use `https://sentinel-api-waat.onrender.com/api/v1` directly.
+dialog can also use `https://your-sentinel-host.example/api/v1` directly.
 
 | Script | Purpose |
 |---|---|
@@ -88,3 +88,5 @@ This check requires the complete validated dataset, not a fixture-only database.
 `node tests/risk-browser-smoke.mjs` runs after `npm run build`. It uses
 `@sparticuz/chromium`, which provides a Linux binary, so it runs in CI rather than
 on Windows/macOS.
+
+For release gates, both browser build modes and environment requirements, see [testing](../docs/testing.md). Host examples are placeholders, not verified deployment URLs.

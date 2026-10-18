@@ -26,18 +26,21 @@ export function History({ client, code, mode, onMonth }) {
     setPage(1);
     setPair(0);
   }, [from, to, code]);
-  if (loading) return <Loading />;
-  if (error) return <ErrorBox error={error} />;
+  const controls = (
+    <div className="history-controls">
+      <MonthSelect label="From month" value={from} onChange={setFrom} />
+      <span>to</span>
+      <MonthSelect label="To month" value={to} onChange={setTo} />
+    </div>
+  );
+  if (loading) return <>{controls}<Loading /></>;
+  if (error) return <>{controls}<ErrorBox error={error} /></>;
   const pairs = result.meta.comparisons || [],
     rows = result.data,
     range = MONTHS.filter((m) => m >= from && m <= to);
   return (
     <>
-      <div className="history-controls">
-        <MonthSelect label="From month" value={from} onChange={setFrom} />
-        <span>to</span>
-        <MonthSelect label="To month" value={to} onChange={setTo} />
-      </div>
+      {controls}
       <div className="timeline">
         {range.map((m) => {
           const row = rows.find((s) => s.report_month === m),

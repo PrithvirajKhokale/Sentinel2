@@ -105,7 +105,7 @@ export function Evidence({ db, onInspect }) {
         </div>
       </div>
       <div className="section-bar">
-        <h2>Source report register</h2>
+        <h2>Bundled reference report register</h2>
         <span className="quiet">April–August 2026</span>
       </div>
       <div className="table-card table-scroll">
@@ -156,14 +156,14 @@ export function Evidence({ db, onInspect }) {
       </div>
       <div className="doc-links">
         <a
-          href="https://github.com/PrithvirajKhokale/Sentinel/blob/f2f50631414386b0a3fb6eb2b2ec5d98f7f89a76/docs/api_contract.md"
+          href="https://github.com/PrithvirajKhokale/Sentinel2/blob/mai/docs/api_contract.md"
           target="_blank"
           rel="noreferrer"
         >
           Read the API contract <ExternalLink size={14} />
         </a>
         <a
-          href="https://github.com/PrithvirajKhokale/Sentinel/blob/f2f50631414386b0a3fb6eb2b2ec5d98f7f89a76/docs/backend-local.md"
+          href="https://github.com/PrithvirajKhokale/Sentinel2/blob/mai/docs/backend-local.md"
           target="_blank"
           rel="noreferrer"
         >

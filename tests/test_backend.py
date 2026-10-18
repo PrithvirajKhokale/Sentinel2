@@ -20,6 +20,28 @@ from backend.models import ActiveDataset, Comparison, Revision, Snapshot
 
 @unittest.skipUnless(os.environ.get("BACKEND_TEST_DATABASE_URL"), "Set a loopback PostgreSQL BACKEND_TEST_DATABASE_URL")
 class BackendTests(unittest.TestCase):
+    def test_readiness_checks_active_dataset_and_missing_pointer(self):
+        response = self.client.get("/readyz")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["dataset_version"], self.bundle["version"])
+        try:
+            with Session(self.engine) as session, session.begin():
+                session.get(ActiveDataset, 1).version = None
+            self.assertEqual(self.client.get("/readyz").status_code, 503)
+            self.assertEqual(self.client.get("/healthz").status_code, 200)
+        finally:
+            activate_bundle(self.engine, self.bundle)
+
+    def test_bootstrap_is_idempotent_and_migrations_match_models(self):
+        from backend.bootstrap import initialize
+        initialize(self.engine)
+        initialize(self.engine)
+        with self.engine.connect() as connection:
+            cfg = Config("alembic.ini")
+            cfg.attributes["connection"] = connection
+            command.check(cfg)
+        self.test_real_import_counts_and_idempotence()
+
     @classmethod
     def setUpClass(cls):
         value=os.environ["BACKEND_TEST_DATABASE_URL"]

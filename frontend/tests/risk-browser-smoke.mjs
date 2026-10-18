@@ -105,6 +105,11 @@ const server = createServer(async (req, res) => {
         signals,
       }, { month, total: signals.length });
     } else if (url.pathname === "/api/v1/projects/400298/history") {
+      if (url.searchParams.get("from_month") > url.searchParams.get("to_month")) {
+        res.writeHead(422, { "content-type": "application/json" });
+        res.end(JSON.stringify({ error: { code: "VALIDATION_ERROR", message: "from_month must not exceed to_month" } }));
+        return;
+      }
       payload = history;
     } else if (url.pathname === "/api/v1/projects/400298") {
       payload = reply(after);
@@ -137,7 +142,7 @@ try {
   const port = server.address().port;
   browser = await playwrightChromium.launch({
     args: chromium.args,
-    executablePath: await chromium.executablePath(),
+    executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || await chromium.executablePath(),
     headless: true,
   });
   const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
@@ -147,12 +152,14 @@ try {
 
   // Guard: reference-mode observations cannot be presented as the full dataset.
   await page.getByRole("button", { name: "Risk intelligence" }).click();
+  if (!process.env.SENTINEL_TEST_LIVE_BUILD) {
   await page.getByText("This view requires the validated live API").waitFor();
 
   await page.getByRole("button", { name: "Connect API" }).click();
   await page.getByRole("radio", { name: /Live Sentinel API/ }).check();
   await page.getByLabel("API base URL").fill(`http://127.0.0.1:${port}/api/v1`);
   await page.getByRole("button", { name: "Connect API" }).last().click();
+  }
   await page.getByText("LIVE API SESSION").waitFor();
   await page.getByLabel("Report month").selectOption("2026-07");
   await page.getByLabel("Filter risk signals by project code").fill("400298");
@@ -186,6 +193,27 @@ try {
 
   await card.getByRole("button", { name: /Inspect project history/ }).click();
   await page.getByText("Nadikude-Srikalahasti 308.7 km").first().waitFor();
+  await page.getByLabel("From month").selectOption("2026-08");
+  await page.getByLabel("To month").selectOption("2026-07");
+  await page.getByText("from_month must not exceed to_month").waitFor();
+  // The user must be able to repair a bad range without closing the inspector.
+  await page.getByLabel("From month").selectOption("2026-06");
+  await page.getByText("from_month must not exceed to_month").waitFor({ state: "hidden" });
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
+  await page.getByRole("button", { name: "Switch to light mode" }).click();
+  await page.getByLabel("Report month").selectOption("2026-04");
+  await page.getByText("No adjacent prior report").waitFor();
+  await page.getByLabel("Report month").selectOption("2026-07");
+  await card.getByText("Reported progress decreased").waitFor();
+  await page.getByRole("button", { name: "Filters: 0 selected" }).click();
+  await page.getByRole("checkbox", { name: after.identity.sector, exact: true }).check();
+  await page.getByRole("button", { name: "Ministry", exact: true }).click();
+  await page.getByLabel("Search ministry labels").fill(after.identity.ministry);
+  await page.getByRole("button", { name: "Add typed" }).click();
+  await page.getByRole("button", { name: "Close filters" }).click();
+  await card.getByText("Reported progress decreased").waitFor();
   assert.deepEqual(errors, [], "Unexpected browser JavaScript errors");
   console.log("PASS: Risk Intelligence browser smoke — public connection, source evidence, exact filters and history drilldown");
 } finally {

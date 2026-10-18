@@ -1,6 +1,6 @@
 # Local monitoring backend
 
-Implemented local delivery: Alembic migration for immutable revisions, monthly snapshots and adjacent comparisons; a fail-closed validating import/activation command; GET `/api/v1/projects`, GET `/api/v1/projects/{project_code}`, GET `/api/v1/projects/{project_code}/history`, and GET `/api/v1/portfolio-summary`. Uses FastAPI/Pydantic, SQLAlchemy and PostgreSQL through psycopg. No frontend, predictions, deployment or authentication implementation is included. History and portfolio reuse the validated stored adjacent comparisons; they never load April-August pair review decisions or recalculate eligibility.
+Implemented local delivery: Alembic migration for immutable revisions, monthly snapshots and adjacent comparisons; a fail-closed validating import/activation command; GET `/api/v1/projects`, GET `/api/v1/projects/{project_code}`, GET `/api/v1/projects/{project_code}/history`, and GET `/api/v1/portfolio-summary`. Uses FastAPI/Pydantic, SQLAlchemy and PostgreSQL through psycopg. The React dashboard and deployment configuration are also implemented; see frontend-integration.md. Predictive models are not implemented. The current API is public and read-only. History and portfolio reuse the validated stored adjacent comparisons; they never load April-August pair review decisions or recalculate eligibility.
 
 ## Local setup (PowerShell, repository root)
 
@@ -8,7 +8,7 @@ Requires Python with the pinned extraction/backend dependencies, Docker Desktop 
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-backend.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-backend.lock
 $localPassword = Read-Host 'Choose a local PostgreSQL password' -AsSecureString
 $env:SENTINEL_DB_PASSWORD = [System.Net.NetworkCredential]::new('', $localPassword).Password
 $encodedPassword = [uri]::EscapeDataString($env:SENTINEL_DB_PASSWORD)
@@ -23,7 +23,7 @@ $env:API_PORT = '8000'
 
 The database is exposed only at 127.0.0.1:5433; the API launcher only permits loopback addresses and defaults to 127.0.0.1:8000. DATABASE_URL must explicitly use postgresql+psycopg and a loopback host. `.env.example` documents defaults; environment variables are read directly, not automatically loaded from .env. Compose requires SENTINEL_DB_PASSWORD from the local environment; .env.example contains placeholders only. Keep actual passwords and connection URLs in ignored .env files or process environment variables, never source control. An existing PostgreSQL volume retains its original password: use that credential; changing POSTGRES_PASSWORD does not rotate an initialized database password. Database files persist in a named Docker volume. Stop services without deleting data: `docker compose -f compose.backend.yaml -p sentinel-backend stop`; stop the API with Ctrl+C. Never use volume deletion to refresh a revision.
 
-Authentication and authorization are required before any shared deployment. Do not expose this unauthenticated service on LAN or public interfaces. Local Swagger/OpenAPI documentation is at http://127.0.0.1:8000/docs. No arbitrary externally bound launch or shared deployment is provided.
+The current product deliberately provides public read-only access. Development binds to loopback; shared hosting uses production settings and HTTPS. Local Swagger/OpenAPI documentation is at http://127.0.0.1:8000/docs. No arbitrary externally bound launch or shared deployment is provided.
 
 ## Import and immutability
 
@@ -58,7 +58,7 @@ Backend integration tests require real loopback PostgreSQL and create a uniquely
 
 ## Remaining limitations
 
-This is a local first delivery, with synchronous DB access and no authentication, frontend, load benchmark or automated revision retention. The catalog/manifest validator supports the reviewed five-month layout only; other months/schema/mappings need explicit versioned work. The archive and DB are separate resources: activation is atomic in PostgreSQL, not a cross-filesystem distributed transaction. Artifact archives and DB volumes need a future backup policy. Source values and identity/scope issues remain unresolved; passing import integrity checks does not certify all measurements. Conservative screening is not silently relaxed.
+The service uses synchronous database access and has no user authentication, load benchmark or automated revision retention. The frontend and deployment configuration are implemented. The catalog/manifest validator supports the reviewed five-month layout only; other months/schema/mappings need explicit versioned work. The archive and DB are separate resources: activation is atomic in PostgreSQL, not a cross-filesystem distributed transaction. See operations.md for the backup and isolated-restore procedure; operational execution must be recorded separately. Source values and identity/scope issues remain unresolved; passing import integrity checks does not certify all measurements. Conservative screening is not silently relaxed.
 
 ## First-delivery verification (merged baseline)
 

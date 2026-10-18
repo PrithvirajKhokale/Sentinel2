@@ -1,18 +1,21 @@
-from typing import Literal
+from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+ExactValues = Annotated[list[Annotated[str, Field(min_length=1, max_length=2000)]], Field(max_length=100)]
+
+
 class ListQuery(StrictModel):
     report_month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
     dataset_version: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
-    ministry: list[str] = Field(default_factory=list)
-    sector: list[str] = Field(default_factory=list)
-    state: list[str] = Field(default_factory=list)
-    agency: list[str] = Field(default_factory=list)
-    project_code: list[str] = Field(default_factory=list)
+    ministry: ExactValues = Field(default_factory=list)
+    sector: ExactValues = Field(default_factory=list)
+    state: ExactValues = Field(default_factory=list)
+    agency: ExactValues = Field(default_factory=list)
+    project_code: ExactValues = Field(default_factory=list)
     q: str | None = Field(default=None, min_length=1, max_length=200)
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=25, ge=1, le=100)
@@ -183,10 +186,10 @@ class PortfolioQuery(StrictModel):
     report_month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
     comparison_month: str | None = Field(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
     dataset_version: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
-    ministry: list[str] = Field(default_factory=list)
-    sector: list[str] = Field(default_factory=list)
-    state: list[str] = Field(default_factory=list)
-    agency: list[str] = Field(default_factory=list)
+    ministry: ExactValues = Field(default_factory=list)
+    sector: ExactValues = Field(default_factory=list)
+    state: ExactValues = Field(default_factory=list)
+    agency: ExactValues = Field(default_factory=list)
 
     @model_validator(mode="after")
     def adjacent(self):

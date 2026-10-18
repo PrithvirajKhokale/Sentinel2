@@ -2,9 +2,9 @@
 
 ## What is already implemented (initial reported-signals slice)
 
-**Status (2026-10-18):** PR #9 merged into `feat/frontend-backend-integration`; Render API deployment `dep-dba2m76q1p3s73a36v7g` is **live** at commit `3f4e2fd`, and GitHub frontend, Python and PostgreSQL checks passed. The existing *private ChatGPT Sites* dashboard is a separate publication and has **not** been updated here; browser acceptance and private-site publishing are pending. PR #8 remains open; this work is not yet in `main`.
+**Current Sentinel2 status:** implemented on `mai`, including the React page. The API is public and read-only; no token is required. Historical Sentinel PR numbers/deployment records below describe earlier work, not verified Sentinel2 release status. Current release gates are in [testing](testing.md), [operations](operations.md) and [team handover](team-handover.md).
 
-The backend endpoint `GET /api/v1/risk-signals` compares immediately adjacent monthly published observations for project codes found in both reports. It accepts `report_month`, optional `project_code`, `q` (name substring), identity filters (`ministry`, `sector`, `state`, `agency`), `signal_type`, `page`, `page_size`, and `dataset_version`. It reuses the existing bearer-token access controls, revision pinning, error envelopes, and source data. It does **not** alter immutable snapshots or comparisons.
+The backend endpoint `GET /api/v1/risk-signals` compares immediately adjacent monthly published observations for project codes found in both reports. It accepts `report_month`, optional `project_code`, `q` (name substring), identity filters (`ministry`, `sector`, `state`, `agency`), `signal_type`, `page`, `page_size`, and `dataset_version`. It reuses revision pinning, error envelopes, and source data. It does **not** alter immutable snapshots or comparisons.
 
 The initial deterministic rules are:
 
@@ -20,7 +20,7 @@ The summary count denominator is **shared observed codes within the current filt
 
 The React page adds a fourth sidebar entry, **Risk intelligence**, with source context, summary counts, type selection, identity filters, pagination, evidence cards and project-history inspection. Reference-example mode clearly indicates that full-report screening requires the live API rather than fabricating full-dataset results.
 
-## Verified checks and remaining browser acceptance
+## Historical Sentinel verification (not current Sentinel2 acceptance)
 
 1. **Passed:** Frontend Node tests and Vite production build. **Pending:** Browser checks in light and dark modes on the updated private site.
 2. **Passed:** Pure-Python signal rule tests covering missing data, zeros, pair-wide review caveats and mismatched pair provenance.
@@ -36,9 +36,10 @@ The React page adds a fourth sidebar entry, **Risk intelligence**, with source c
 - **3D – Quality review:** Define and validate **field-specific** comparability decisions with documented human review for baseline, revised-cost zero, project split and identity conflicts. Do not bypass the existing pair-wide warnings.
 - **4A – ML feasibility:** Define measurable targets grounded in *future observed reports*, test whether more historical months are needed, avoid target leakage, and report baseline performance including coverage and confidence intervals. A model is not promised until evaluation supports it.
 - **4B – Model integration (only if valid):** Version model training data, baseline features, evaluation and explanation policy. Add separately labeled predicted outputs only if the project team approves their interpretation.
-- **5 – Production polish:** Complete private-site publishing, authorization appropriate to team users, end-to-end regression testing, review/merge policy, sustainable database retention and backups, README/demo and ownership handoff.
+- **5 – Production polish:** Complete public-service acceptance, end-to-end regression testing, review/merge policy, sustainable database retention and backups, README/demo and ownership handoff.
 
-## Roles and ownership
-Sentinel is currently a **solo-led project**: the user owns prioritization, private-site publication, data review, acceptance and product decisions, with ChatGPT assisting implementation, source checks, tests and documentation via available GitHub and Render connections. No milestone depends on a teammate's contribution. ML target audit, feature engineering, experiments and evaluation remain in the solo work plan.
+## Ownership
+
+Use the current [Sentinel2 handover](team-handover.md) to assign review and delivery responsibilities. Earlier solo/private-site statements are historical and do not define the current team's access or roles.
 
 **Scope boundary:** Until the ML target feasibility and evaluations pass, describe Sentinel as a historical infrastructure monitoring system with **evidence-backed reported signals**, not a validated predictor of delay/cost-overrun probabilities.
