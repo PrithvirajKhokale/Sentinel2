@@ -1,16 +1,25 @@
 # yaml-language-server: $schema=https://render.com/schema/render.yaml.json
-# Public: one service serves the read-only API and the dashboard; there is no authentication.
+# Render Blueprint: creates the PostgreSQL database and one public web service that
+# serves the read-only API (/api/v1, /docs) and the dashboard (/). No authentication.
+# The Docker build downloads the five hash-verified source PDFs and rebuilds the
+# dataset; first start migrates the database and imports the validated revision.
+databases:
+  - name: sentinel-db
+    plan: free
+    region: singapore
+    databaseName: sentinel
+    user: sentinel
+
 services:
   - type: web
-    name: sentinel-api
+    name: sentinel
     runtime: docker
     plan: free
     region: singapore
-    branch: feat/frontend-backend-integration
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /healthz
-    autoDeployTrigger: "off"
+    autoDeployTrigger: commit
     envVars:
       - key: APP_ENV
         value: production
@@ -24,4 +33,3 @@ services:
         value: require
       - key: SENTINEL_FRONTEND_DIR
         value: /app/frontend/dist
-# Uses the existing sentinel-db in the approved workspace.
