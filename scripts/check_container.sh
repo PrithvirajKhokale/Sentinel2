@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Disposable CI resources only. Never pass a production database/container here.
 set -euo pipefail
-: "SENTINEL_TEST_POSTGRES_CONTAINER:?Set the disposable CI PostgreSQL container ID}"
-: "SENTINEL_TEST_BACKUP_PATH:?Set a temporary backup path}"
+: "${SENTINEL_TEST_POSTGRES_CONTAINER:?Set the disposable CI PostgreSQL container ID}"
+: "${SENTINEL_TEST_BACKUP_PATH:?Set a temporary backup path}"
 container=sentinel-release-check
 cleanup() {
   docker logs "$container" 2>/dev/null || true
