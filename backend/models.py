@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, ForeignKey, ForeignKeyConstraint, Integer, JSON, String, Text
+from sqlalchemy import CheckConstraint, ForeignKey, ForeignKeyConstraint, Index, Integer, JSON, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -23,6 +23,7 @@ class ActiveDataset(Base):
 
 class Snapshot(Base):
     __tablename__ = "monthly_snapshots"
+    __table_args__ = (Index("ix_snapshots_revision_month_code", "version", "report_month", "project_code"),)
     version: Mapped[str] = mapped_column(ForeignKey("dataset_revisions.version"), primary_key=True)
     project_code: Mapped[str] = mapped_column(String, primary_key=True)
     report_month: Mapped[str] = mapped_column(String(7), primary_key=True)
@@ -37,6 +38,7 @@ class Snapshot(Base):
 class Comparison(Base):
     __tablename__ = "adjacent_comparisons"
     __table_args__ = (
+        Index("ix_comparisons_revision_months_code", "version", "before_month", "after_month", "project_code"),
         ForeignKeyConstraint(["version", "project_code", "before_month"],
                              ["monthly_snapshots.version", "monthly_snapshots.project_code", "monthly_snapshots.report_month"]),
         ForeignKeyConstraint(["version", "project_code", "after_month"],

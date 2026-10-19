@@ -21,4 +21,7 @@ def engine_from_env():
         raise ValueError("Only loopback PostgreSQL is supported in development")
     if access.production and (not url.host or url.query.get("sslmode") not in {"require", "verify-ca", "verify-full"}):
         raise ValueError("Production PostgreSQL requires a host and explicit TLS sslmode")
-    return create_engine(url, pool_pre_ping=True)
+    # Bound connection/pool waits so outages do not exhaust request workers.
+    return create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=5,
+                         pool_timeout=5, connect_args={"connect_timeout": 5},
+                         hide_parameters=True)

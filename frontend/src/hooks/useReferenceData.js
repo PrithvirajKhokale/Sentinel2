@@ -5,13 +5,15 @@ export function useReferenceData() {
   const [db, setDb] = useState();
   const [error, setError] = useState();
   useEffect(() => {
-    fetch("/reference-data.json")
+    const controller = new AbortController();
+    fetch("/reference-data.json", { signal: controller.signal })
       .then((r) => {
         if (!r.ok) throw Error("Could not load reference data.");
         return r.json();
       })
-      .then(setDb)
-      .catch(setError);
+      .then((data) => { if (!controller.signal.aborted) setDb(data); })
+      .catch((error) => { if (!controller.signal.aborted) setError(error); });
+    return () => controller.abort();
   }, []);
   return { db, error };
 }

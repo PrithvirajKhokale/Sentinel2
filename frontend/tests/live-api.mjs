@@ -1,4 +1,4 @@
-// Exercises the real frontend client against an imported, authenticated API.
+// Exercises the real frontend client against an imported public API.
 import assert from 'node:assert/strict';
 import { createClient, VERSION } from '../src/api/index.js';
 const base=process.env.SENTINEL_TEST_API_BASE;
@@ -26,3 +26,11 @@ assert.ok(search.data.some(s=>s.project_code===list.data[0].project_code));
 await assert.rejects(()=>client.get('/portfolio-summary',{report_month:'2026-08',comparison_month:'2026-06'}),{code:'VALIDATION_ERROR'});
 await assert.rejects(()=>client.get('/projects/unknown',{report_month:'2026-08'}),{code:'PROJECT_NOT_OBSERVED'});
 console.log('Full-data frontend client: list, paging, detail, zeros/nulls, provenance, gaps, portfolio, scope filters, search and errors passed.');
+
+const risk=await client.get('/risk-signals',{report_month:'2026-07',project_code:['400298'],signal_type:'reported_progress_decrease'});
+assert.equal(risk.data.signals[0].evidence[0].before_raw,'55.02');
+assert.equal(risk.data.signals[0].evidence[0].after_raw,'2');
+assert.equal(risk.data.signals[0].pair_wide_review_required,true);
+const options=await client.get('/filter-options',{report_month:'2026-07'});
+assert.ok(options.data.sector.length > 0);
+console.log('Risk signal source values and filter options passed.');

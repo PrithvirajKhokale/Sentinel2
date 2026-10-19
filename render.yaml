@@ -18,8 +18,8 @@ services:
     region: singapore
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    healthCheckPath: /healthz
-    autoDeployTrigger: commit
+    healthCheckPath: /readyz
+    autoDeployTrigger: checksPass
     envVars:
       - key: APP_ENV
         value: production

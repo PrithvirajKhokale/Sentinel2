@@ -4,6 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+from sqlalchemy.exc import OperationalError
 from fastapi.testclient import TestClient
 from backend.app import create_app
 from backend.access import AccessSettings
@@ -15,6 +16,25 @@ QUERIES = ["/api/v1/projects?report_month=2026-08", "/api/v1/projects/701530?rep
 
 
 class AccessTests(unittest.TestCase):
+    def test_readiness_fails_closed_without_leaking_database_error(self):
+        client = self.client()
+        with patch("backend.app.Session", side_effect=OperationalError("private SQL", {}, Exception("secret"))):
+            response = client.get("/readyz")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["error"]["code"], "DATABASE_UNAVAILABLE")
+        self.assertNotIn("secret", response.text)
+        self.assertNotIn("private SQL", response.text)
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        self.assertEqual(client.get("/healthz").status_code, 200)
+
+    def test_filter_inputs_are_bounded_before_database_access(self):
+        client = self.client()
+        for path in ["projects", "risk-signals", "portfolio-summary", "filter-options"]:
+            for values in [["x"] * 101, ["x" * 2001], [""]]:
+                response = client.get("/api/v1/" + path,
+                    params=[("report_month", "2026-08")] + [("sector", x) for x in values])
+                self.assertEqual(response.status_code, 422, response.text)
+
     def client(self, **env):
         context = patch.dict(os.environ, {"APP_ENV": "development", "SENTINEL_FRONTEND_DIR": "", **env})
         context.start(); self.addCleanup(context.stop)

@@ -16,6 +16,9 @@ export function createClient(db, config = { mode: "examples" }) {
       return pinned;
     },
     async get(path, params = {}, signal) {
+      signal?.throwIfAborted();
+      if (pinned && params.dataset_version && params.dataset_version !== pinned)
+        throw new APIError("DATASET_CHANGED", "Reconnect before selecting another dataset revision.");
       let result;
       if (config.mode === "examples")
         result = exampleResponse(db, path, {
@@ -55,6 +58,8 @@ export function createClient(db, config = { mode: "examples" }) {
             "API returned a non-JSON response.",
           );
         }
+        if (!result || typeof result !== "object" || Array.isArray(result))
+          throw new APIError("INVALID_RESPONSE", "API returned an invalid response.");
         if (!response.ok || result.error)
           throw new APIError(
             result.error?.code || `HTTP_${response.status}`,
@@ -62,16 +67,18 @@ export function createClient(db, config = { mode: "examples" }) {
             result.error?.details || [],
           );
       }
+      signal?.throwIfAborted();
       if (
         result.meta?.contract_version !== "1" ||
         !Array.isArray(result.warnings) ||
-        !result.meta?.dataset_version
+        !/^[a-f0-9]{64}$/.test(result.meta?.dataset_version || "")
       )
         throw new APIError(
           "INVALID_RESPONSE",
           "Response does not match Sentinel contract v1.",
         );
-      if (pinned && result.meta.dataset_version !== pinned)
+      if ((pinned && result.meta.dataset_version !== pinned) ||
+          (params.dataset_version && result.meta.dataset_version !== params.dataset_version))
         throw new APIError(
           "DATASET_CHANGED",
           "Dataset revision changed. Reconnect to start a consistent session.",

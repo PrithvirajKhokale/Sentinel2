@@ -271,3 +271,37 @@ test("live client pins the dataset, handles error envelopes and refuses mixed re
     globalThis.fetch = previous;
   }
 });
+
+test("malformed API responses fail with a contract error", async () => {
+  const previous = globalThis.fetch;
+  try {
+    for (const body of [null, [], "bad", { meta: { contract_version: "1", dataset_version: "bad" }, warnings: [] }]) {
+      globalThis.fetch = async () => ({ ok: true, json: async () => body });
+      await assert.rejects(createClient(null, { mode: "live", base: "/api/v1" }).get("/projects"), { code: "INVALID_RESPONSE" });
+    }
+  } finally { globalThis.fetch = previous; }
+});
+
+test("cancelled requests cannot pin the next session to a stale revision", async () => {
+  const previous = globalThis.fetch;
+  const controller = new AbortController();
+  try {
+    globalThis.fetch = async () => ({ ok: true, json: async () => {
+      controller.abort();
+      return db.examples.project_list.response;
+    } });
+    const client = createClient(null, { mode: "live", base: "/api/v1" });
+    await assert.rejects(client.get("/projects", {}, controller.signal), { name: "AbortError" });
+    assert.equal(client.version, null);
+  } finally { globalThis.fetch = previous; }
+});
+
+test("explicit revision requests cannot accept a different response revision", async () => {
+  const previous = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => ({ ok: true, json: async () => db.examples.project_list.response });
+    const client = createClient(null, { mode: "live", base: "/api/v1" });
+    await assert.rejects(client.get("/projects", { dataset_version: "f".repeat(64) }), { code: "DATASET_CHANGED" });
+    assert.equal(client.version, null);
+  } finally { globalThis.fetch = previous; }
+});
