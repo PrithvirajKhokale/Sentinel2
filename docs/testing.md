@@ -37,3 +37,9 @@ Browser smoke is a regression subset. Release acceptance must also exercise the 
 The monitoring workflow runs on `mai`, `main`, `fix/**`, `feat/**`, `test/**`, all PRs and manual dispatch. It uses read-only permissions, cancels obsolete runs, applies job timeouts, and runs both browser build modes plus the complete native PostgreSQL gate and real JavaScript API client. Relevant failures must block release. Configure repository rules to require these jobs; a workflow file alone does not enforce branch protection.
 
 The release owner should record the tested commit, suite results, skipped/blocked checks and deployment acceptance in the PR. Historical passing results in older documents do not certify a newer commit.
+
+## Container release gate
+
+`container-release` builds the actual Dockerfile, starts its non-root process against disposable PostgreSQL, verifies same-origin UI/API, and runs `frontend/tests/live-browser.mjs` against real full-data responses. The browser checks pagination, July project 400298, all four identity dimensions, history error recovery, themes and mobile overflow. It then uses PostgreSQL 17 `pg_dump`/`pg_restore` to restore into a separate database, verifies 9,321 snapshots and 7,202 comparisons before startup, and reruns the API contract against the restored database. Temporary backups are deleted after the job; production data is never accessed.
+
+This proves the image and restore procedure in CI. It does not establish scheduled production backups or verify hosting TLS: the disposable container uses development settings and loopback PostgreSQL. Actual deployment acceptance remains a separate gate.

@@ -31,3 +31,5 @@ Startup currently activates the image's baked revision when it differs from the 
 ## Current limits
 
 No trained predictive model or notification service exists. The public API has bounded pagination/filter inputs and database connection waits, but no load-tested throughput target or gateway rate limiting. Establish load measurements and request limits before significantly increasing public traffic. The five-month UI/report catalog is intentionally bounded to the reviewed dataset. Resource retention, backups, external database access and enforced branch rules must be verified in the actual provider/account settings.
+
+The `container-release` CI job rehearses custom-format backup/restore in an isolated database using server-matched PostgreSQL tools, checks restored counts before application startup, and reruns API checks. Keep the actual production backup schedule and restore record separately; a passing CI rehearsal is not a production backup.
